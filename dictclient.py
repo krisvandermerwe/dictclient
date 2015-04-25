@@ -1,3 +1,4 @@
+# -*- coding: UTF-8 -*-
 # Client for the DICT protocol (RFC2229)
 #
 # Copyright (C) 2002 John Goerzen
@@ -15,26 +16,27 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program; if not, write to the Free Software
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#    A few small hacks to make it work on Python3  - KrisvanderMerwe 25 Aoril 2015
 
 import socket, re
 
-version = '1.0.2'
+version = '1.0.2.1'
 
-def dequote(str):
+def dequote(teks):
     """Will remove single or double quotes from the start and end of a string
     and return the result."""
     quotechars = "'\""
-    while len(str) and str[0] in quotechars:
-        str = str[1:]
-    while len(str) and str[-1] in quotechars:
-        str = str[0:-1]
-    return str
+    while len(teks) and teks[0] in quotechars:
+        teks = teks[1:]
+    while len(teks) and teks[-1] in quotechars:
+        teks = teks[0:-1]
+    return teks
 
-def enquote(str):
+def enquote(teks):
     """This function will put a string in double quotes, properly
     escaping any existing double quotes with a backslash.  It will
     return the result."""
-    return '"' + str.replace('"', "\\\"") + '"'
+    return '"' + teks.replace('"', "\\\"") + '"'
 
 class Connection:
     """This class is used to establish a connection to a database server.
@@ -43,10 +45,25 @@ class Connection:
     and a port (an int).  The hostname defaults to localhost
     and the port to 2628, the port specified in RFC."""
     def __init__(self, hostname = 'localhost', port = 2628):
+    #def __init__(self, hostname = '', port = 2628):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((hostname, port))
-        self.rfile = self.sock.makefile("rt")
-        self.wfile = self.sock.makefile("wt", 0)
+        #self.rfile = self.sock.makefile("rt")
+        #self.wfile = self.sock.makefile("wt", 0)
+        #kvm
+        #kvm
+        #kvm
+        #kvm
+        #self.rfile = self.sock.makefile(mode="r")
+        #self.wfile = self.sock.makefile(mode="w")
+        self.rfile = self.sock.makefile()
+        self.wfile = self.sock.makefile("wb", 0)
+        #kvm
+        #kvm
+        #kvm
+        #kvm
+
+
         self.saveconnectioninfo()
 
     def getresultcode(self):
@@ -63,8 +80,8 @@ class Connection:
 
         code, text = self.getresultcode()
         if code < 200 or code >= 300:
-            raise Exception, "Got '%s' when 200-class response expected" % \
-                  line
+            raise Exception ("Got '%s' when 200-class response expected %s " % (code,text) )
+          
         return [code, text]
 
     def get100block(self):
@@ -84,9 +101,8 @@ class Connection:
         finalcode]"""
         code, text = self.getresultcode()
         if code < 100 or code >= 200:
-            raise Exception, "Got '%s' when 100-class response expected" % \
-                  code
-
+            raise Exception ("Got '%s' when 100-class response expected" %  code )
+ 
         bodylines = self.get100block().split("\n")
 
         code2 = self.get200result()[0]
@@ -95,11 +111,11 @@ class Connection:
     def get100dict(self):
         """Used when expecting a dictionary of results.  Will read from
         the initial 100 code, to a period and the 200 code."""
-        dict = {}
+        dicl = {}
         for line in self.get100result()[1]:
             key, val = line.split(' ', 1)
-            dict[key] = dequote(val)
-        return dict
+            dicl[key] = dequote(val)
+        return dicl
 
     def saveconnectioninfo(self):
         """Called by __init__ to handle the initial connection.  Will
@@ -147,7 +163,9 @@ class Connection:
         if not hasattr(self, 'dbobjs'):
             self.dbobjs = {}
 
-        if self.dbobjs.has_key(dbname):
+        #if self.dbobjs.has_key(dbname):
+        #kvm
+        if dbname in self.dbobjs:
             return self.dbobjs[dbname]
 
         # We use self.dbdescs explicitly since we don't want to
@@ -155,7 +173,7 @@ class Connection:
 
         if dbname != '*' and dbname != '!' and \
                not dbname in self.dbdescs.keys():
-            raise Exception, "Invalid database name '%s'" % dbname
+            raise Exception( "Invalid database name '%s'" % dbname )
 
         self.dbobjs[dbname] = Database(self, dbname)
         return self.dbobjs[dbname]
@@ -163,7 +181,9 @@ class Connection:
     def sendcommand(self, command):
         """Takes a command, without a newline character, and sends it to
         the server."""
-        self.wfile.write(command + "\n")
+        #self.wfile.write(command + "\n")
+        #kvm
+        self.wfile.write(command.encode() + b"\n")
 
     def define(self, database, word):
         """Returns a list of Definition objects for each matching
@@ -179,7 +199,7 @@ class Connection:
 
         if database != '*' and database != '!' and \
            not database in self.getdbdescs():
-            raise Exception, "Invalid database '%s' specified" % database
+            raise Exception ( "Invalid database '%s' specified" % database )
         
         self.sendcommand("DEFINE " + enquote(database) + " " + enquote(word))
         code = self.getresultcode()[0]
@@ -190,7 +210,7 @@ class Connection:
             # No definitions.
             return []
         if code != 150:
-            raise Exception, "Unknown code %d" % code
+            raise Exception ("Unknown code %d" % code )
 
         while 1:
             code, text = self.getresultcode()
@@ -215,10 +235,9 @@ class Connection:
         self.getstratdescs()            # Prime the cache
         self.getdbdescs()               # Prime the cache
         if not strategy in self.getstratdescs().keys():
-            raise Exception, "Invalid strategy '%s'" % strategy
-        if database != '*' and database != '!' and \
-               not database in self.getdbdescs().keys():
-            raise Exception, "Invalid database name '%s'" % database
+            raise Exception ( "Invalid strategy '%s'" % strategy )
+        if database != '*' and database != '!' and  not database in self.getdbdescs().keys():
+            raise Exception ( "Invalid database name '%s'" % database )
 
         self.sendcommand("MATCH %s %s %s" % (enquote(database),
                                              enquote(strategy),
@@ -228,7 +247,7 @@ class Connection:
             # No Matches
             return []
         if code != 152:
-            raise Exception, "Unexpected code %d" % code
+            raise Exception ( "Unexpected code %d" % code )
 
         retval = []
 
@@ -237,7 +256,7 @@ class Connection:
             retval.append(Definition(self, self.getdbobj(matchdict),
                                      dequote(matchword)))
         if self.getresultcode()[0] != 250:
-            raise Exception, "Unexpected end-of-list code %d" % code
+            raise Exception ( "Unexpected end-of-list code %d" % code )
         return retval
 
 class Database:
