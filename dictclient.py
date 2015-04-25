@@ -45,24 +45,11 @@ class Connection:
     and a port (an int).  The hostname defaults to localhost
     and the port to 2628, the port specified in RFC."""
     def __init__(self, hostname = 'localhost', port = 2628):
-    #def __init__(self, hostname = '', port = 2628):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((hostname, port))
-        #self.rfile = self.sock.makefile("rt")
-        #self.wfile = self.sock.makefile("wt", 0)
-        #kvm
-        #kvm
-        #kvm
-        #kvm
-        #self.rfile = self.sock.makefile(mode="r")
-        #self.wfile = self.sock.makefile(mode="w")
+
         self.rfile = self.sock.makefile()
         self.wfile = self.sock.makefile("wb", 0)
-        #kvm
-        #kvm
-        #kvm
-        #kvm
-
 
         self.saveconnectioninfo()
 
@@ -163,8 +150,6 @@ class Connection:
         if not hasattr(self, 'dbobjs'):
             self.dbobjs = {}
 
-        #if self.dbobjs.has_key(dbname):
-        #kvm
         if dbname in self.dbobjs:
             return self.dbobjs[dbname]
 
@@ -181,8 +166,6 @@ class Connection:
     def sendcommand(self, command):
         """Takes a command, without a newline character, and sends it to
         the server."""
-        #self.wfile.write(command + "\n")
-        #kvm
         self.wfile.write(command.encode() + b"\n")
 
     def define(self, database, word):
